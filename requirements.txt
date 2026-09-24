@@ -1,0 +1,20 @@
+# my-rag 依赖（版本为实测通过的组合，Python 3.12）
+# 也可以直接：pip install -e .   （从 pyproject.toml 安装，并注册 my-rag 命令）
+
+# ── 核心 ──
+zhipuai==2.1.5.20250825
+chromadb==1.5.9
+langchain-text-splitters==1.1.2
+rank-bm25==0.2.2
+python-dotenv==1.2.3
+numpy==2.5.1
+
+# ── 多格式文档支持 ──
+jieba==0.42.1          # 中文分词（BM25 对中文语料必需）
+pypdf==6.19.0          # PDF
+python-docx==1.2.0     # Word
+
+# ── HTTP 服务（只有 my-rag serve 需要）──
+# 只用命令行的话可以跳过这两个：pip install -r requirements.txt --no-deps 之后手动装核心包
+fastapi>=0.110
+uvicorn>=0.27

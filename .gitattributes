@@ -1,0 +1,8 @@
+# 统一换行符，避免 Windows 上满屏的 LF/CRLF 警告
+* text=auto eol=lf
+
+# 二进制文件不参与换行符转换
+*.png binary
+*.jpg binary
+*.pdf binary
+*.sqlite3 binary

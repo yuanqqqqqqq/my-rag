@@ -1,0 +1,41 @@
+# ── 密钥：绝对不能提交 ──
+.env
+.env.local
+
+# ── 向量库数据（体积 20M，且随时能从文档重建）──
+chroma_db/
+*.sqlite3
+
+# ── 原始语料（用 scripts/fetch_data.py 获取，不进版本控制）──
+#
+#   这些都是 FastAPI 官方仓库的内容，不是本项目的代码。
+#   判断依据很简单：如果一个文件不是【这个工具的一部分】，
+#   它就不该出现在仓库里 —— 否则别人的第一印象会是
+#   "这仓库 92% 是 FastAPI 的文件，他自己的代码呢？"
+#
+#   要跑 README 里的评估基线，先执行：
+#       python scripts/fetch_data.py
+data/fastapi-repo/
+data/docs_src/
+data/_tmp_docs_src/
+
+# ── Python 缓存 / 打包产物 ──
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
+
+# ── 实验产物 ──
+experiments/out/
+*.log
+
+# ── 编辑器 / 系统垃圾 ──
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

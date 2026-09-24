@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "my-rag"
+version = "0.2.0"
+description = "手写的 RAG 检索工具 —— 检索、切块、融合、精排全部自己实现，每个默认参数都有对照实验支撑"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+keywords = ["rag", "retrieval", "llm", "vector-search", "rerank"]
+classifiers = [
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: MIT License",
+    "Topic :: Text Processing :: Indexing",
+]
+
+dependencies = [
+    "zhipuai>=2.1.5",
+    "chromadb>=1.0",
+    "langchain-text-splitters>=1.0",
+    "rank-bm25>=0.2.2",
+    "python-dotenv>=1.0",
+    "numpy>=2.0",
+    "jieba>=0.42",        # 中文分词（BM25 对中文必需）
+    "pypdf>=4.0",         # PDF 支持
+    "python-docx>=1.0",   # Word 支持
+]
+
+[project.optional-dependencies]
+# 只用命令行的话不需要这两个。装了才能跑 my-rag serve
+serve = ["fastapi>=0.110", "uvicorn>=0.27"]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+my-rag = "rag.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/"
+
+[tool.setuptools.packages.find]
+include = ["rag*", "evaluation*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
