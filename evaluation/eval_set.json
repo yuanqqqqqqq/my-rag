@@ -1,0 +1,80 @@
+{
+  "description": "my-rag 评估集：7 道有答案的题（队列 A）+ 2 道库里没有的题（队列 B）",
+  "corpus": "FastAPI 官方文档 tutorial/ (51 篇 md) + docs_src (464 个代码文件)，切块后 534 块",
+  "construction_notes": [
+    "构造评估集前必须验证两件事，否则尺子本身就是坏的：",
+    "  1) 期望的来源文件在库里真实存在",
+    "  2) 必须词在库里有出现",
+    "反例：第一版曾想加一道 'HTTP 状态码' 的题，一查发现 '422' 在语料里出现 0 次 ——",
+    "这种题会永远失败，但失败的不是检索，是题本身。",
+    "队列 B 的题永远不该被检索到：它们衡量的是'会不会瞎编'，不是'检索准不准'。"
+  ],
+  "cases": [
+    {
+      "q": "How do I declare a path parameter in FastAPI?",
+      "expect_source": "path-params.md",
+      "must_contain": ["item_id"],
+      "kind": "直接查询",
+      "queue": "A"
+    },
+    {
+      "q": "How do I install FastAPI with all optional dependencies?",
+      "expect_source": "index.md",
+      "must_contain": ["fastapi[standard]"],
+      "kind": "命令",
+      "queue": "A",
+      "note": "本项目的靶子题。'dependencies' 在 FastAPI 文档里主要指导依赖注入，词义冲突。修复前后检索相关性 3.0 -> 7.0。"
+    },
+    {
+      "q": "How do I enable CORS in my application?",
+      "expect_source": "cors.md",
+      "must_contain": ["CORSMiddleware"],
+      "kind": "专有名词",
+      "queue": "A"
+    },
+    {
+      "q": "How do I run a task after returning a response to the client?",
+      "expect_source": "background-tasks.md",
+      "must_contain": ["BackgroundTasks"],
+      "kind": "语义提问",
+      "queue": "A"
+    },
+    {
+      "q": "How do I upload a file?",
+      "expect_source": "request-files.md",
+      "must_contain": ["UploadFile"],
+      "kind": "直接查询",
+      "queue": "A"
+    },
+    {
+      "q": "How do I limit the data returned to the client?",
+      "expect_source": "response-model.md",
+      "must_contain": ["response_model"],
+      "kind": "语义提问",
+      "queue": "A",
+      "note": "已知问题：关键词命中率一直是 0%，未解决。候选池同质（query-param-models / header-param-models / body-multiple-params 名字都像），rerank 名次在 1~4 之间抖动。"
+    },
+    {
+      "q": "How do I implement OAuth2 with a bearer token?",
+      "expect_source": "security/simple-oauth2.md",
+      "must_contain": ["OAuth2PasswordBearer"],
+      "kind": "专有名词",
+      "queue": "A",
+      "note": "候选池同质（simple-oauth2 / oauth2-jwt / first-steps 都在讲 OAuth2），rerank 的不稳定样本。"
+    },
+    {
+      "q": "What is the capital of France?",
+      "expect_source": null,
+      "must_contain": [],
+      "kind": "库里没有",
+      "queue": "B"
+    },
+    {
+      "q": "What is FastAPI's current stock price?",
+      "expect_source": null,
+      "must_contain": [],
+      "kind": "库里没有",
+      "queue": "B"
+    }
+  ]
+}
