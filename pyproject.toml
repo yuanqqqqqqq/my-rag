@@ -37,7 +37,9 @@ dev = ["pytest>=8.0"]
 my-rag = "rag.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/"
+Homepage = "https://github.com/yuanqqqqqqq/my-rag"
+Repository = "https://github.com/yuanqqqqqqq/my-rag"
+Issues = "https://github.com/yuanqqqqqqq/my-rag/issues"
 
 [tool.setuptools.packages.find]
 include = ["rag*", "evaluation*"]
