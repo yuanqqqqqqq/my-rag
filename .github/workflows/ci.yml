@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  # ── 不依赖网络和 API Key 的纯函数测试 ──
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: 安装依赖
+        run: pip install -r requirements.txt
+
+      - name: 编译检查
+        run: python -m compileall -q rag evaluation scripts tests
+
+      - name: 代码检查（未使用的导入、未定义的变量）
+        run: |
+          pip install pyflakes
+          python -m pyflakes rag evaluation scripts tests
+
+      - name: 单元测试
+        run: python tests/test_pipeline.py
+
+  # ── 语料管线冒烟测试：验证切块结果可复现 ──
+  #     真实下载文档并跑一遍切块，断言块数。
+  #     这条能抓住"改了一个参数，语料悄悄变了"的回归 —— 不需要 API Key。
+  corpus:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: 安装依赖
+        run: pip install -r requirements.txt
+
+      - name: 下载语料
+        run: python scripts/fetch_data.py
+
+      - name: 断言切块结果可复现
+        run: |
+          python - <<'PY'
+          from rag.chunking import load_documents
+          from rag.config import DOCS_DIR, DOCS_SRC_DIR
+
+          items = load_documents(str(DOCS_DIR), str(DOCS_SRC_DIR))
+          print(f"切块数: {len(items)}")
+
+          # 语料不变时，切块结果应当是确定性的。
+          # 如果这里挂了，说明改动了 chunking.py 或语料 —— 需要同步更新
+          # README 里记录的 534 这个数字。
+          assert len(items) == 534, f"切块数变化: {len(items)} != 534"
+          assert all(it["source"] for it in items), "有块缺少 source"
+          assert all(it["text"].strip() for it in items), "有空块"
+          print("OK")
+          PY
