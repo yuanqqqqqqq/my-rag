@@ -154,6 +154,9 @@ def build_index(
     if not items:
         raise RuntimeError("没有切出任何块，检查路径是否正确")
 
+    if verbose:
+        _hint_split_terms(items)
+
     if dry_run:
         return _dry_run_report(items, name, verbose)
 
@@ -177,6 +180,32 @@ def build_index(
     stats["chunks"] = len(items)
     stats["name"] = name
     return stats
+
+
+def _hint_split_terms(items: list[dict], top_n: int = 8) -> None:
+    """提示可能被分词器切碎的领域词。
+
+    中文没有空格，分词错了【不会报错】，只会让检索效果悄悄变差 ——
+    用户会去怀疑 embedding、怀疑切块、怀疑模型，唯独想不到是分词的锅。
+    这类问题必须由工具主动暴露出来，不能等用户自己发现。
+    """
+    from .tokenize import detect_split_terms, has_chinese
+
+    texts = [it["text"] for it in items]
+    if not any(has_chinese(t) for t in texts[:50]):
+        return
+
+    candidates = detect_split_terms(texts, top_n=top_n)
+    if not candidates:
+        return
+
+    print("\n提示：以下词可能被分词器切碎了")
+    for word, count in candidates:
+        print(f"    {word}     (出现 {count} 次)")
+    print("  中文没有空格，分词错了不会报错，只会让检索悄悄变差。")
+    print("  如果它们在你的领域里是一个词，加进词典再重建：")
+    print("    my-rag init .            # 生成词典模板")
+    print("    my-rag index <路径> --dict domain.txt")
 
 
 def _dry_run_report(items: list[dict], name: str, verbose: bool) -> dict:

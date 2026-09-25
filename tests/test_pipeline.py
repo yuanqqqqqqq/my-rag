@@ -358,6 +358,54 @@ def test_load_user_dict_teaches_domain_words():
     assert "调休额度" in after, "自定义词典没生效"
 
 
+def test_tokenize_preserves_order():
+    """token 顺序必须和原文一致。
+
+    早先的实现分两趟抽（先用正则抽走所有英文数字，再抽所有中文段），
+    结果是原本隔着数字的词挨到了一起：
+        "工龄满 1 年不满 3 年"  ->  ['1', '3', '工龄', '满', '年', ...]
+                                    ^^^^ 数字跑到前面，于是「满」和「年」相邻
+    对 BM25 没影响（它只统计词频），但顺序敏感的分析会错 ——
+    领域词检测就因为这一条误报出「满年」这个根本不存在的词。
+    """
+    from rag.tokenize import tokenize
+
+    toks = tokenize("工龄满 1 年不满 3 年")
+
+    # 数字必须夹在「满」和「年」中间，不能全跑到前面去
+    assert toks.index("满") < toks.index("1") < toks.index("年")
+    # 「工龄」也要在最前面
+    assert toks.index("工龄") < toks.index("满")
+
+
+def test_tokenize_mixed_text_keeps_interleaving():
+    """中英混排时，两边也要保持各自的相对位置。"""
+    from rag.tokenize import tokenize
+
+    toks = tokenize("先装 fastapi 再配 uvicorn")
+
+    assert toks.index("先装") < toks.index("fastapi") < toks.index("再配")
+    assert toks.index("fastapi") < toks.index("uvicorn")
+
+
+def test_detect_split_terms_finds_broken_words():
+    """应该能发现被 jieba 切碎的领域词。
+
+    「年假」不在 jieba 通用词典里，会被切成「年」「假」——
+    但因为它俩总是挨在一起，相邻单字共现统计能把它拼回来。
+    """
+    from rag.tokenize import detect_split_terms
+
+    texts = [
+        "员工年假天数按工龄计算。",
+        "年假申请需要上级审批。",
+        "未休年假可结转至次年。",
+    ]
+    found = {w for w, _ in detect_split_terms(texts, min_count=2)}
+
+    assert "年假" in found, f"没检测出被切碎的「年假」，实际: {found}"
+
+
 def test_detect_language():
     from rag.tokenize import detect_language
 

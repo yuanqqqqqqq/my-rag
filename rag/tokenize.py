@@ -26,6 +26,9 @@ _EN_TOKEN = re.compile(r"[A-Za-z0-9_]+")
 _HAS_CHINESE = re.compile(r"[一-鿿]")
 _CHINESE_RUN = re.compile(r"[一-鿿]+")
 
+# 一趟扫描用：英文/数字 或 一段连续中文，按出现顺序交替匹配
+_TOKEN = re.compile(r"[A-Za-z0-9_]+|[一-鿿]+")
+
 _jieba = None
 _dict_loaded = False
 
@@ -97,25 +100,87 @@ def load_user_dict(path: str | os.PathLike) -> int:
 
 
 def tokenize(text: str) -> list[str]:
-    """中英混合分词。返回小写 token 列表。
+    """中英混合分词。返回小写 token 列表，**保持原文顺序**。
 
     ⚠️ 这里**故意不过滤单字，也不用停用词表**，原因有两个：
 
     1. jieba 切碎领域词的兜底。它把「年假」切成「年」「假」时，
        保留单字至少还能让查询和文档在字级别匹配上；
-       一旦过滤掉单字，匹配就彻底断了（实测踩过这个坑）。
+       一旦过滤掉单字，匹配就彻底断了。
 
     2. 高频虚词不用手工过滤 —— **BM25 的 IDF 机制本来就会给
        处处都有的词很低的权重**。手写停用词表是重复劳动，还容易误伤。
-    """
-    tokens = [t.lower() for t in _EN_TOKEN.findall(text)]
 
-    if _HAS_CHINESE.search(text):
-        jieba = _get_jieba()
-        for run in _CHINESE_RUN.findall(text):
-            tokens.extend(w for w in jieba.lcut(run) if w.strip())
+    ⚠️ 实现上必须【一趟扫描】。早先的版本分两趟（先用正则抽所有英文数字、
+       再抽所有中文段），结果是 token 顺序被打乱：
+
+           原文: 工龄满 1 年不满 3 年
+           旧结果: ['1', '3', '5', '工龄', '满', '年', '不满', ...]
+                    ^^^^ 数字全跑到前面，原本不相邻的「满」和「年」挨到了一起
+
+       对 BM25 没影响（它只统计词频，不看顺序），**但对任何顺序敏感的
+       分析都是错的** —— 领域词检测就被这个坑过（把「满年」当成了候选词）。
+    """
+    tokens: list[str] = []
+
+    for match in _TOKEN.finditer(text):
+        piece = match.group(0)
+        if _HAS_CHINESE.search(piece):
+            jieba = _get_jieba()
+            tokens.extend(w for w in jieba.lcut(piece) if w.strip())
+        else:
+            tokens.append(piece.lower())
 
     return tokens
+
+
+# ══════════════════════════════════════════════════════
+# 领域词检测：主动发现「被 jieba 切碎」的词
+# ══════════════════════════════════════════════════════
+#
+# 为什么需要主动检测：
+#     中文没有空格，分词器把词切错了你【看不出来】。
+#     用户看到的不是报错，而是"检索效果莫名变差" ——
+#     然后他会去怀疑 embedding、怀疑切块、怀疑模型，
+#     唯独不会想到是分词的锅。这类问题必须由工具主动暴露出来。
+
+_ZH_SINGLE = re.compile(r"^[一-鿿]$")
+
+# 单字虚词：它们相邻是语法现象，不构成领域词。
+# 不过滤的话，"的是""了的"这类会淹没真正的候选。
+_ZH_FUNCTION_CHARS = set(
+    "的了是在和与或等这那我你他她它们有为对从到把被就都而及其之也很会能可要没个"
+    "些呢吗吧啊着过并但则于以由让使给地得上下里外前后时当只又再更最如若因所"
+)
+
+
+def detect_split_terms(
+    texts: list[str], *, min_count: int = 3, top_n: int = 15
+) -> list[tuple[str, int]]:
+    """找出可能被 jieba 切碎的领域词。返回 [(候选词, 出现次数)]。
+
+    做法：统计**相邻两个单字 token** 的共现次数。
+        「年」和「假」如果总是挨在一起出现，那「年假」大概率是一个词。
+
+    这是个启发式，会有误报（把「假使」这类拆错的也算上），
+    所以只用来【提示用户配词典】，不自动改任何东西。
+
+    已经配过词典的词不会被检测出来 —— 它们不再被切碎。
+    """
+    from collections import Counter
+
+    pairs: Counter = Counter()
+    for text in texts:
+        toks = tokenize(text)
+        single = [
+            t if _ZH_SINGLE.match(t) and t not in _ZH_FUNCTION_CHARS else None
+            for t in toks
+        ]
+        for a, b in zip(single, single[1:]):
+            if a and b:
+                pairs[a + b] += 1
+
+    return [(w, n) for w, n in pairs.most_common(top_n) if n >= min_count]
 
 
 def detect_language(texts: list[str], sample: int = 200) -> str:
