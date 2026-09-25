@@ -257,7 +257,7 @@ def _retrieve_step(client, collection, chunks, bm25, question: str, args):
     return hits, time.perf_counter() - t0
 
 
-def _generate_step(client, question: str, hits: list[dict], *, stream: bool):
+def _generate_step(client, question: str, hits: list[dict], *, stream: bool, brief: bool = False):
     """生成答案。stream=True 时边收边打，同时把完整文本拼好返回。
 
     注意：流式输出【必须】在打印完标题和来源之后调用 ——
@@ -269,14 +269,14 @@ def _generate_step(client, question: str, hits: list[dict], *, stream: bool):
     t0 = time.perf_counter()
     if stream:
         pieces = []
-        for piece in generate_answer_stream(client, question, hits):
+        for piece in generate_answer_stream(client, question, hits, brief=brief):
             pieces.append(piece)
             sys.stdout.write(piece)
             sys.stdout.flush()   # 不 flush 会被缓冲住，看起来还是"卡住"
         answer = "".join(pieces)
         sys.stdout.write("\n")
     else:
-        answer = generate_answer(client, question, hits)
+        answer = generate_answer(client, question, hits, brief=brief)
     return answer, time.perf_counter() - t0
 
 
@@ -304,7 +304,9 @@ def _ask_one(client, collection, chunks, bm25, question: str, args, *, header: b
             print(f"  [{i}] {h['source']}{extra}")
         print()
 
-    answer, t_gen = _generate_step(client, question, hits, stream=stream)
+    answer, t_gen = _generate_step(
+        client, question, hits, stream=stream, brief=args.brief
+    )
 
     if show:
         if not stream:
@@ -529,6 +531,7 @@ def cmd_chat(args: argparse.Namespace) -> int:
         chunks=chunks, bm25=bm25, vocab=vocab,
         enable_rewrite=not args.no_rewrite,
         guard_rewrite=not args.no_rewrite_guard,
+        brief=args.brief,
     )
 
     print(f"\n{'─' * 70}")
@@ -697,6 +700,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--json", action="store_true",
                    help="输出 JSON（批量时为 JSONL，一行一条）")
     p.add_argument("--stream", action="store_true", help="流式输出答案")
+    p.add_argument(
+        "--brief", action="store_true",
+        help="简洁模式：约 6 倍快（3s vs 17s），但需要列举/比较的问题会丢结构",
+    )
     _add_index_arg(p)
     _add_strategy_arg(p)
     p.add_argument("--top-k", type=int, default=4)
@@ -708,6 +715,8 @@ def build_parser() -> argparse.ArgumentParser:
     _add_index_arg(p)
     _add_strategy_arg(p)
     p.add_argument("--top-k", type=int, default=4)
+    p.add_argument("--brief", action="store_true",
+                   help="简洁模式：约 6 倍快，追问场景通常够用")
     p.add_argument("--no-rewrite", action="store_true",
                    help="关掉追问改写（对照组：看改写到底有没有用）")
     p.add_argument("--no-rewrite-guard", action="store_true",

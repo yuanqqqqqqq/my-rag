@@ -114,6 +114,7 @@ class Conversation:
         vocab: set[str] | None = None,
         enable_rewrite: bool = True,
         guard_rewrite: bool = True,
+        brief: bool = False,
         max_turns: int = MAX_HISTORY_TURNS,
     ):
         self.client = client
@@ -129,6 +130,11 @@ class Conversation:
         # 改写护栏：模型自己编了语料外的术语时，回退到原问题。
         # 关掉它就能观察"不设防时改写会跑到哪去" —— 对照实验用。
         self.guard_rewrite = guard_rewrite
+
+        # 简洁模式。多轮场景下它其实更合适 ——
+        # 追问的期待本来就是"简短补充"，而且历史会被截断到 120 字，
+        # 长答案反而挤掉了更多轮次的上下文。
+        self.brief = brief
 
         self.max_turns = max_turns
         self.turns: list[Turn] = []
@@ -186,12 +192,16 @@ class Conversation:
 
         if stream:
             pieces = []
-            for piece in generate_answer_stream(self.client, standalone, hits):
+            for piece in generate_answer_stream(
+                self.client, standalone, hits, brief=self.brief
+            ):
                 pieces.append(piece)
                 yield piece
             turn.answer = "".join(pieces)
         else:
-            turn.answer = generate_answer(self.client, standalone, hits)
+            turn.answer = generate_answer(
+                self.client, standalone, hits, brief=self.brief
+            )
 
         self.turns.append(turn)
         self.last = turn
