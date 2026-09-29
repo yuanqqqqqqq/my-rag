@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 
+import httpx
 from dotenv import load_dotenv
 from zhipuai import ZhipuAI
 
@@ -29,7 +30,13 @@ def get_client() -> ZhipuAI:
             f"    ZHIPUAI_API_KEY=你的key\n"
             f"  可以从 {PROJECT_ROOT / '.env.example'} 复制一份。"
         )
-    return ZhipuAI(api_key=api_key)
+    # ★ 显式绕开系统代理：httpx 默认 trust_env=True 会读 Windows 注册表里的
+    #   系统代理（HKCU\...\Internet Settings\ProxyServer）。代理软件一关，
+    #   注册表里的设置还在 —— 于是所有请求被塞给一个没人监听的端口，
+    #   报 APIConnectionError，且错误信息完全指不到原因。
+    #   智谱是国内 API，直连可用，也不该绕道境外代理。
+    return ZhipuAI(api_key=api_key,
+                   http_client=httpx.Client(trust_env=False, timeout=60))
 
 
 def chat(client: ZhipuAI, prompt: str, model: str | None = None) -> str:
