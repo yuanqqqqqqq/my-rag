@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "my-rag"
 version = "0.2.0"
-description = "手写的 RAG 检索工具 —— 检索、切块、融合、精排全部自己实现，每个默认参数都有对照实验支撑"
+description = "把文档变成可问答知识库的 RAG 工具：多格式切块、四种检索策略、LLM 精排、多轮对话、HTTP 服务与评估体系"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }

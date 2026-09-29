@@ -5,8 +5,12 @@
 > 一条命令建索引，一条命令提问。支持 Markdown / PDF / Word / 纯文本 / 代码，
 > 中英文自动识别。
 
-不是 LangChain 的封装 —— 切块、检索、融合、精排全部自己实现。
+不依赖 LangChain 等框架 —— 切块、检索、融合、精排都在本仓库内实现。
 每个默认参数都有依据，不是调参试出来的。
+
+[![CI](https://github.com/yuanqqqqqqq/my-rag/actions/workflows/ci.yml/badge.svg)](https://github.com/yuanqqqqqqq/my-rag/actions/workflows/ci.yml)
+[![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ---
 
