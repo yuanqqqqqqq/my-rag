@@ -61,8 +61,8 @@ jobs:
           print(f"切块数: {len(items)}")
 
           # 语料不变时，切块结果应当是确定性的。
-          # 如果这里挂了，说明改动了 chunking.py 或语料 —— 需要同步更新
-          # README 里记录的 534 这个数字。
+          # 如果这里挂了，说明改动了 chunking.py、或语料（scripts/fetch_data.py
+          # 里的 FASTAPI_COMMIT 指向了新版本）—— 需要同步更新 README 里的 534。
           assert len(items) == 534, f"切块数变化: {len(items)} != 534"
           assert all(it["source"] for it in items), "有块缺少 source"
           assert all(it["text"].strip() for it in items), "有空块"

@@ -16,6 +16,12 @@
     文档里大量使用 {* ../../docs_src/X.py *} 这种引用指令指向代码示例。
     不把这些指令展开成真实代码，文档里 271 处「怎么做」的答案就是空壳 ——
     展开之后某道题的答对率从 0/5 变成 5/5，是语料侧最大的一次提升。
+
+为什么钉死 commit：
+    仓库默认拉的是 FastAPI 的【最新 HEAD】，文档一旦更新，切块数就会变，
+    CI 里「切块数 == 534」的断言就会误红。钉死到 FASTAPI_COMMIT 后：
+      1. 语料可复现，任何人都能拿到和作者完全一致的结果；
+      2. 想升级语料时，主动改这个 SHA，再同步更新 README / CI 里的 534。
 """
 
 from __future__ import annotations
@@ -26,6 +32,9 @@ import sys
 from pathlib import Path
 
 REPO = "https://github.com/fastapi/fastapi.git"
+# 钉死的 commit（2026-09-01，本次语料切块数 534 对应的版本）。
+# 升级语料：改成新 SHA，并同步更新 README 和 .github/workflows/ci.yml 里的块数。
+FASTAPI_COMMIT = "50113da16fec53b66b80d75e80a89296de4fa5a5"
 ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / "data"
 DEST_REPO = DATA / "fastapi-repo"
@@ -40,18 +49,21 @@ def run(cmd: list[str]) -> None:
 def main() -> int:
     DATA.mkdir(exist_ok=True)
 
-    # 1) 稀疏克隆：只取要用的两个目录，不拉整个仓库
+    # 1) 稀疏克隆 + 钉死 commit：只取要用的两个目录，且结果可复现
     if DEST_REPO.exists():
         print(f"[1/2] {DEST_REPO.name}/ 已存在，跳过 clone")
     else:
-        print("[1/2] 稀疏克隆 FastAPI 仓库（只取 docs）...")
+        print("[1/2] 稀疏克隆 FastAPI 仓库（只取 docs，钉死 commit）...")
         run(["git", "clone", "--depth", "1", "--filter=blob:none",
              "--sparse", REPO, str(DEST_REPO)])
         run(["git", "-C", str(DEST_REPO), "sparse-checkout", "set",
-             "docs/en/docs", "docs/en/docs_src"])
+             "docs/en/docs", "docs_src"])
+        run(["git", "-C", str(DEST_REPO), "fetch", "--depth", "1",
+             "origin", FASTAPI_COMMIT])
+        run(["git", "-C", str(DEST_REPO), "checkout", FASTAPI_COMMIT])
 
     # 2) 把代码示例复制到约定位置
-    src = DEST_REPO / "docs" / "en" / "docs_src"
+    src = DEST_REPO / "docs_src"
     if not src.is_dir():
         print(f"\n[错误] 没找到 {src}")
         print("  试着删掉 data/fastapi-repo 后重跑本脚本。")
